@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 
-[features]
-
+itertools = "0.10.0"
