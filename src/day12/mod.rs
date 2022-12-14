@@ -9,11 +9,13 @@ fn day12() {
     let (start,end,map) = parse_input(input);
     // println!("{:?}, {:?}, {:?}", start, end, map);
 
-    let shortest = find_shortest_distance(start,end,&map);
-    println!("{:?}", shortest);
+    // part 1
+    let distances = distances_to_end(&map, end);
+    println!("{}", distances[start.0][start.1]);
 
+    // part 2
     let possible_starts = all_lowest_points(&map);
-    let shortest_possible = possible_starts.iter().map(|&s| find_shortest_distance(s,end,&map)).min().unwrap();
+    let shortest_possible = possible_starts.iter().map(|&s| distances[s.0][s.1]).min().unwrap();
     println!("{:?}", shortest_possible);
 }
 
@@ -47,23 +49,35 @@ fn parse_input(input: &str) -> ((usize,usize), (usize,usize), Vec<Vec<u32>>) {
     (start, end, map)
 }
 
-fn find_shortest_distance(start: (usize,usize), end: (usize,usize), map: &Vec<Vec<u32>>) -> usize {
+fn all_lowest_points(map: &Vec<Vec<u32>>) -> Vec<(usize,usize)> {
+    let mut points: Vec<(usize,usize)> = Vec::new();
+
+    for (row_idx, row) in map.iter().enumerate() {
+        for (col_idx, height) in row.iter().enumerate() {
+            if *height == 0 {
+                points.push((row_idx,col_idx));
+            }
+        }
+    }
+    points
+}
+
+fn distances_to_end(map: &Vec<Vec<u32>>, end: (usize,usize)) -> Vec<Vec<u32>> {
     let n_rows = map.len();
     let n_cols = map[0].len();
 
-    let mut visited: Vec<Vec<bool>> = Vec::new();
-    for map_row in map.iter() {
-        visited.push(vec![false; map_row.len()]);
+    let mut front = VecDeque::new();
+    let mut distances = Vec::new();
+    for _ in 0..n_rows {
+        distances.push(vec![u32::MAX; n_cols]);
     }
 
-    let mut front: VecDeque<((usize,usize),usize)> = VecDeque::new();
-    front.push_back(((start),0));
+    distances[end.0][end.1] = 0;
+    front.push_back(end);
 
-
-    while let Some(((row,col),dist)) = front.pop_front() {
-        if (row,col) == end {
-            return dist;
-        }
+    while let Some((row,col)) = front.pop_front() {
+        let current_distance = distances[row][col];
+        let current_height = map[row][col];
 
         let mut add_to_front = |r_off:isize,c_off:isize| {
             if (row == 0 && r_off < 0)
@@ -76,9 +90,9 @@ fn find_shortest_distance(start: (usize,usize), end: (usize,usize), map: &Vec<Ve
             let r_n = (row as isize + r_off) as usize;
             let c_n = (col as isize + c_off) as usize;
 
-            if (map[r_n][c_n] as i64) - (map[row][col] as i64) <= 1 && !visited[r_n][c_n] {
-                visited[r_n][c_n] = true;
-                front.push_back(((r_n,c_n),dist+1));
+            if (map[r_n][c_n] as i64) - (current_height as i64) >= -1 && distances[r_n][c_n] > current_distance + 1 {
+                distances[r_n][c_n] = current_distance + 1;
+                front.push_back((r_n,c_n));
             }
         };
 
@@ -88,18 +102,5 @@ fn find_shortest_distance(start: (usize,usize), end: (usize,usize), map: &Vec<Ve
         add_to_front(0,-1);
     }
 
-    return usize::MAX;
-}
-
-fn all_lowest_points(map: &Vec<Vec<u32>>) -> Vec<(usize,usize)> {
-    let mut points: Vec<(usize,usize)> = Vec::new();
-
-    for (row_idx, row) in map.iter().enumerate() {
-        for (col_idx, height) in row.iter().enumerate() {
-            if *height == 0 {
-                points.push((row_idx,col_idx));
-            }
-        }
-    }
-    points
+    return distances;
 }
