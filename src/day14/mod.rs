@@ -1,4 +1,3 @@
-// use std::collections::HashSet;
 
 type Map = Vec<Vec<bool>>;
 
@@ -10,25 +9,26 @@ fn day14() {
 
     // part 1
     let (mut map, lowest) = parse_input(input);
-    let mut count = 0;
-    while add_sand_no_floor(&mut map, lowest) {
-        count += 1;
-    }
+    let count = count_sand_no_floor(&mut map, lowest);
     println!("{:?}", count);
 
     // part 2
     let (mut map, lowest) = parse_input(input);
-    let mut count = 0;
-    while add_sand_floor(&mut map, lowest) {
-        count += 1;
-    }
+    let count = count_sand_floor(&mut map, lowest);
     println!("{:?}", count);
 }
 
 fn parse_input(input: &str) -> (Map, usize) {
+    fn parse_tuple(s: &str) -> (usize,usize) {
+        let mut coords = s.split(',');
+        let col = coords.next().unwrap().parse::<usize>().unwrap();
+        let row = coords.next().unwrap().parse::<usize>().unwrap();
+        (col,row)
+    }
+
     let mut map = Vec::new();
-    for _ in 0..=1000 { // size is based on starting point
-        map.push(vec![false; 500]);
+    for _ in 0..=1000 { // size is based on triangle from starting point and assuming non-negative coordinates
+        map.push(vec![false; 501]);
     }
 
     let mut lowest = 0;
@@ -61,58 +61,91 @@ fn parse_input(input: &str) -> (Map, usize) {
     return (map, lowest)
 }
 
-fn parse_tuple(s: &str) -> (usize,usize) {
-    let mut coords = s.split(',');
-    let col = coords.next().unwrap().parse::<usize>().unwrap();
-    let row = coords.next().unwrap().parse::<usize>().unwrap();
-    (col,row)
+#[derive(Clone,Copy)]
+enum Direction {
+    Down,
+    Left,
+    Right,
+    Stop,
 }
+use Direction::*;
 
-fn add_sand_no_floor(map: &mut Map, lowest: usize) -> bool {
-    if map[500][0] {
-        return false;
+impl Direction {
+    fn next(&self) -> Self {
+        match self {
+            Down => Left,
+            Left => Right,
+            Right => Stop,
+            Stop => panic!("trying to continue from stop node"),
+        }
     }
 
-    let (mut col, mut row) = (500,0);
-    loop {
-        if row >= lowest {return false;}
-
-        if !map[col][row+1] {
-            row += 1;
-        } else if !map[col-1][row+1] {
-            row += 1;
-            col -= 1;
-        } else if !map[col+1][row+1] {
-            row += 1;
-            col += 1;
-        } else {
-            map[col][row] = true;
-            return true;
+    fn next_coord(&self,col:usize,row:usize) -> (usize,usize) {
+        match self {
+            Down => (col,row+1),
+            Left => (col-1,row+1),
+            Right => (col+1,row+1),
+            Stop => panic!("trying to continue from stop node"),
         }
     }
 }
 
-fn add_sand_floor(map: &mut Map, lowest: usize) -> bool {
-    if map[500][0] {
-        return false;
-    }
+fn count_sand_no_floor(map: &mut Map, lowest: usize) -> usize {
+    let mut count = 0;
+    let mut path = Vec::new();
+    path.push(((500,0),Down));
 
-    let (mut col, mut row) = (500,0);
-    loop {
-        if row + 1 == lowest + 2 {
-            map[col][row] = true;
-            return true;
-        } else if !map[col][row+1] {
-            row += 1;
-        } else if !map[col-1][row+1] {
-            row += 1;
-            col -= 1;
-        } else if !map[col+1][row+1] {
-            row += 1;
-            col += 1;
-        } else {
-            map[col][row] = true;
-            return true;
+    while let Some(&((col, row), direction)) = path.last() {
+
+        if row >= lowest {
+            return count;
+        }
+
+        match direction {
+            Stop => {
+                path.pop();
+                map[col][row] = true;
+                count += 1;
+            },
+            dir => {
+                let (c_new, r_new) = dir.next_coord(col,row);
+                if !map[c_new][r_new] {
+                    path.push( ((c_new,r_new),Down) );
+                } else {
+                    let last = path.last_mut().unwrap();
+                    *last = ((col,row), dir.next());
+                }
+            },
         }
     }
+
+    return count
+}
+
+fn count_sand_floor(map: &mut Map, lowest: usize) -> usize {
+    let mut count = 0;
+    let mut path = Vec::new();
+    path.push(((500,0),Down));
+
+    while let Some(&((col, row), direction)) = path.last() {
+
+        match direction {
+            Stop => {
+                path.pop();
+                map[col][row] = true;
+                count += 1;
+            },
+            dir => {
+                let (c_new, r_new) = dir.next_coord(col,row);
+                if !map[c_new][r_new] && r_new < lowest+2 {
+                    path.push( ((c_new,r_new),Down) );
+                } else {
+                    let last = path.last_mut().unwrap();
+                    *last = ((col,row), dir.next());
+                }
+            },
+        }
+    }
+
+    return count
 }
