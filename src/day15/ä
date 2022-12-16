@@ -1,0 +1,221 @@
+use std::ops::Range;
+use std::cmp::Ordering;
+
+#[test]
+fn day15() {
+    // let input = include_str!("input.txt");
+    // let y = 2_000_000;
+    let input = include_str!("input_test.txt");
+    let y = 10;
+    // println!("{}", input);
+    //
+    let (sensors, x_range, _y_range) = parse_input(input);
+    // println!("{:?},{:?}", x_range, y_range);
+
+    // part 1
+    let count = x_range.filter(|&x| cannot_contain_beacon(x,y,&sensors)).count();
+    println!("{}", count);
+
+    let count = count_covered(&sensors, y);
+    println!("{}", count);
+}
+
+#[derive(Debug)]
+struct Sensor {
+    x: i64,
+    y: i64,
+    bx: i64,
+    by: i64,
+    d: i64,
+}
+
+// enum EndPoint {
+//     Start(i64),
+//     End(i64),
+//     StartExclusive(i64),
+//     EndExclusive(i64),
+// }
+// use EndPoint::*;
+
+#[derive(Debug)]
+struct EndPoint {
+    x: i64,
+    start: bool,
+    exclusive: bool,
+}
+
+impl Sensor {
+    fn get_covered_row(&self, y: i64) -> Option<(EndPoint,EndPoint)> {
+        let dy = (self.y - y).abs();
+
+        if dy > self.d {
+            return None;
+        }
+
+        let dx = self.d - dy;
+        let x_start = self.x - dx;
+        let x_end = self.x + dx;
+
+        if self.by == y && self.bx == x_start {
+            // return Some((StartExclusive(x_start), End(x_end)));
+            return Some((
+                    EndPoint{x: x_start, start: true, exclusive: true},
+                    EndPoint{x: x_end, start: false, exclusive: false},
+                    ));
+        } else if self.by == y && self.bx == x_end {
+            // return Some((Start(x_start), EndExclusive(x_end)));
+            return Some((
+                    EndPoint{x: x_start, start: true, exclusive: false},
+                    EndPoint{x: x_end, start: false, exclusive: true},
+                    ));
+        } else {
+            // return Some((Start(x_start), End(x_end)));
+            return Some((
+                    EndPoint{x: x_start, start: true, exclusive: false},
+                    EndPoint{x: x_end, start: false, exclusive: false},
+                    ));
+        };
+
+    }
+}
+
+fn count_covered(sensors: &Vec<Sensor>, y: i64) -> i64 {
+    let mut endpoints = Vec::new();
+    for s in sensors.iter() {
+        if let Some((start,end)) = s.get_covered_row(y) {
+            println!("{:?},{:?}", start,end);
+            endpoints.push(start);
+            endpoints.push(end);
+        }
+    }
+
+    println!();
+    for p in endpoints.iter() {
+        println!("{:?}", p);
+    }
+    println!();
+
+    // endpoints.sort_by_key(|&p| match p {
+    //     Start(x) => x,
+    //     End(x) => x,
+    //     StartExclusive(x) => x,
+    //     EndExclusive(x) => x,
+    // });
+    // endpoints.sort_by_key(|p| p.x);
+    endpoints.sort_by(|p1,p2| {
+        if p1.x != p2.x {
+            p1.x.cmp(p2.x)
+        } else {
+            if p1.start && !p2.start {
+                Ordering::Less
+            } else if !p1.start && p2.start {
+                Ordering::Greater
+            } else
+                Ordering::Equal
+            }
+        }
+    });
+
+    println!();
+    for p in endpoints.iter() {
+        println!("{:?}", p);
+    }
+    println!();
+
+    let mut endpoints_it = endpoints.iter().peekable();
+    let mut count = 0;
+    while let Some(start) = endpoints_it.next() {
+        // skip all remaining start points
+        while let Some(p) = endpoints_it.peek() {
+            if p.start {
+                endpoints_it.next();
+            } else {
+                break;
+            }
+            // match p {
+            //     Start(_) | StartExclusive(_) => {endpoints_it.next();},
+            //     End(_) | EndExclusive(_) => break,
+            // }
+        }
+
+        // skip to the last end point
+        let mut end = endpoints_it.next().unwrap();
+        while let Some(p) = endpoints_it.peek() {
+            if !p.start {
+                end = endpoints_it.next().unwrap();
+            } else {
+                break;
+            }
+            // match p {
+            //     Start(_) | StartExclusive(_) => break,
+            //     End(_) | EndExclusive(_) => {end = endpoints_it.next().unwrap()},
+            // }
+        }
+
+        println!("{:?},{:?}", start,end);
+        // match (start,end) {
+        //     (Start(s),End(e)) => {count += e-s+1;},
+        //     (Start(s),EndExclusive(e)) => {count += e-s;},
+        //     (StartExclusive(s),End(e)) => {count += e-s;},
+        //     (StartExclusive(s),EndExclusive(e)) => {count += e-s-1;},
+        //     (_,_) => panic!("start and end should always be Start* and End* variants respectively")
+        // }
+        if start.exclusive && end.exclusive {
+            count += end.x - start.x - 1;
+        } else if start.exclusive || end.exclusive {
+            count += end.x - start.x;
+        } else {
+            count += end.x - start.x + 1;
+        }
+    }
+
+    count
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fn parse_input(input: &str) -> (Vec<Sensor>, Range<i64>, Range<i64>) {
+    let mut sensors = Vec::new();
+    let mut max_x = i64::MIN;
+    let mut min_x = i64::MAX;
+    let mut max_y = i64::MIN;
+    let mut min_y = i64::MAX;
+
+    for line in input.lines() {
+        let mut parts = line.split(['=',',',':']);
+
+        let x = parts.nth(1).unwrap().parse::<i64>().unwrap();
+        let y = parts.nth(1).unwrap().parse::<i64>().unwrap();
+        let bx = parts.nth(1).unwrap().parse::<i64>().unwrap();
+        let by = parts.nth(1).unwrap().parse::<i64>().unwrap();
+        let d = (x-bx).abs() + (y-by).abs();
+        let sensor = Sensor{x,y,bx,by,d};
+
+        max_x = max_x.max(x + d);
+        min_x = min_x.min(x - d);
+        max_y = max_y.max(y + d);
+        min_y = min_y.min(y - d);
+
+        sensors.push(sensor);
+    }
+
+    (sensors, min_x..max_x+1, min_y..max_y+1)
+}
+
+fn cannot_contain_beacon(x: i64, y: i64, sensors: &Vec<Sensor>) -> bool {
+    sensors.iter().any(|s| {
+        (!(s.bx == x && s.by == y)) // not already a beacon there
+            && (s.x - x).abs() + (s.y - y).abs() <= s.d // and within radius
+    })
+}
