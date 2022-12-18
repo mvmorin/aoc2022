@@ -1,8 +1,6 @@
-use std::fs;
-
 #[test]
 fn day02() {
-    let input = fs::read_to_string("src/day02/input.txt").unwrap();
+    let input = include_str!("input.txt");
     let score = input
         .trim_end()
         .split('\n')

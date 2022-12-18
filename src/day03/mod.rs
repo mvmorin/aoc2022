@@ -1,8 +1,6 @@
-use std::fs;
-
 #[test]
 fn day03() {
-    let input = fs::read_to_string("src/day03/input.txt").unwrap();
+    let input = include_str!("input.txt");
     let tot_bp_priority = input
         .trim_end()
         .split('\n')

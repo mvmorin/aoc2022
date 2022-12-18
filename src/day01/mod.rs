@@ -1,8 +1,6 @@
-use std::fs;
-
 #[test]
 fn day01() {
-    let input = fs::read_to_string("src/day01/input.txt").unwrap();
+    let input = include_str!("input.txt");
     let elfs = input.split("\n\n").map(|elf| {
         elf.trim_end()
             .split('\n')

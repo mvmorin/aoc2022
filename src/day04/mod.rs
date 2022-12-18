@@ -1,10 +1,9 @@
 use itertools::Itertools;
-use std::fs;
 use std::ops::Range;
 
 #[test]
 fn day04() {
-    let input = fs::read_to_string("src/day04/input.txt").unwrap();
+    let input = include_str!("input.txt");
 
     let n_fully_contained = input
         .trim_end()

@@ -1,5 +1,3 @@
-use std::fs;
-
 #[derive(Debug)]
 struct Stacks {
     stacks: Vec<Vec<char>>,
@@ -73,7 +71,7 @@ impl Move {
 
 #[test]
 fn day05() {
-    let input = fs::read_to_string("src/day05/input.txt").unwrap();
+    let input = include_str!("input.txt");
     let mut input = input.trim_end().split("\n\n");
 
     let start_input = input.next().unwrap();
