@@ -138,13 +138,6 @@ fn max_release_2(
 
     const MAX_TIME: u64 = 26;
 
-    #[derive(Debug)]
-    struct State {
-        closed_valves: Vec<usize>,
-        actor1: Actor,
-        actor2: Actor,
-    }
-
     #[derive(Debug, Clone)]
     struct Actor {
         time: u64,
