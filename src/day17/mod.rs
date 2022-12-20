@@ -1,6 +1,7 @@
 #[test]
 fn day17() {
     let input = include_str!("input.txt").trim();
+    // let input = include_str!("input_nils.txt").trim();
     // let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
     let moves = input.chars().map(|c| {
         if c == '<' {
