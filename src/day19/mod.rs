@@ -1,15 +1,11 @@
 #[test]
-#[ignore]
 fn day19() {
     let input = include_str!("input.txt");
     // let input = include_str!("input_test.txt");
 
     let blueprints = parse_blueprints(input);
-    // println!("{:#?}", blueprints[0]);
-    // println!("{:#?}", blueprints[1]);
-    // println!("{:#?}", blueprints[2]);
 
-    // // part 1
+    // part 1
     let tot_quality_level = blueprints
         .iter()
         .enumerate()
@@ -55,7 +51,7 @@ struct State {
     geode_robots: u32
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 enum BuildDecision {
     OreRobot,
     ClayRobot,
@@ -200,23 +196,22 @@ fn build(state: &mut State, decision: &BuildDecision, blueprint: &Blueprint) {
 }
 
 fn pointless_to_build(state: &State, decision: &BuildDecision, blueprint: &Blueprint) -> bool {
-    // pretty much no use in checking this, it will never happen with such a short horizon
-    // if let ObsidianRobot = decision {
-    //     if state.obsidian_robots + 1 > blueprint.geode_robot_obsidian_cost {
-    //         return true
-    //     }
-    // }
-
-    if let ClayRobot = decision {
-        if state.clay_robots + 1 > blueprint.obsidian_robot_clay_cost {
-            return true
-        }
+    if state.obsidian_robots >= blueprint.geode_robot_obsidian_cost {
+        if *decision == ObsidianRobot { return true; }
+        if *decision == ClayRobot { return true; }
+        if *decision == OreRobot
+            && state.ore_robots >= blueprint.geode_robot_ore_cost { return true; }
     }
 
-    if let OreRobot = decision {
-        if state.ore_robots + 1 > blueprint.max_ore_consumption {
-            return true
-        }
+    if state.clay_robots >= blueprint.obsidian_robot_clay_cost {
+        let max_ore = blueprint.geode_robot_ore_cost.max(blueprint.obsidian_robot_ore_cost);
+
+        if *decision == ClayRobot { return true; }
+        if *decision == OreRobot && state.ore_robots >= max_ore { return true; }
+    }
+
+    if state.ore_robots >= blueprint.max_ore_consumption {
+        if *decision == OreRobot { return true; }
     }
 
     return false
@@ -240,6 +235,12 @@ fn max_geodes(blueprint: &Blueprint, max_time: u32) -> u32 {
     let mut max_geodes = 0;
 
     while let Some(state) = front.pop() {
+
+        let mut geodes_upper_bound = state.geodes;
+        geodes_upper_bound += (max_time - state.time)*state.geode_robots;
+        geodes_upper_bound += (max_time - state.time)*(max_time-state.time)/2;
+        if geodes_upper_bound <= max_geodes { continue; }
+
         let mut had_time_to_build = false;
 
         for decision in BUILD_DECISIONS.iter() {
