@@ -1,2 +1,2 @@
 #!/bin/sh
-cargo test $1 -- --show-output --test-threads=1
+cargo test $1 $2 -- --show-output --test-threads=1
