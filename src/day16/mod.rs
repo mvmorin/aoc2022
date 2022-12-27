@@ -1,6 +1,4 @@
-
 #[test]
-#[ignore]
 fn day16() {
     let input = include_str!("input.txt");
     // let input = include_str!("input_test.txt");
@@ -111,6 +109,16 @@ fn max_release(
     });
 
     while let Some(state) = front.pop() {
+
+        let mut max_release_upper_bound = state.release;
+        for &valve in state.closed_valves.iter() {
+            let new_time = state.time + distances[state.node][valve] + 1;
+            if new_time < MAX_TIME {
+                max_release_upper_bound += nodes[valve].flowrate * (MAX_TIME - new_time);
+            }
+        }
+        if max_release_upper_bound <= max_release { continue; }
+
         for (valve_idx,&valve) in state.closed_valves.iter().enumerate() {
             let new_time = state.time + distances[state.node][valve] + 1;
 
@@ -139,51 +147,68 @@ fn max_release_2(
 
     const MAX_TIME: u64 = 26;
 
-    #[derive(Debug, Clone)]
+    #[derive(Clone)]
     struct Actor {
         time: u64,
-        release: u64,
         node: usize,
+    }
+
+    struct State {
+        actor1: Actor,
+        actor2: Actor,
+        release: u64,
+        closed_valves: Vec<usize>,
     }
 
     let mut max_release = 0;
     let mut front = Vec::new();
-    front.push((
-        valves.clone(),
-        Actor {
-            time: 0,
-            release: 0,
-            node: start,
-        },
-        Actor {
-            time: 0,
-            release: 0,
-            node: start,
-        },
-    ));
+    front.push( State {
+        release: 0,
+        closed_valves: valves.clone(),
+        actor1: Actor{time: 0, node: start},
+        actor2: Actor{time: 0, node: start},
+    });
 
-    while let Some((closed_valves, actor1, actor2)) = front.pop() {
-        let (active, passive) = if actor1.time <= actor2.time {
-            (actor1, actor2)
+    while let Some(state) = front.pop() {
+
+        let (active, passive) = if state.actor1.time <= state.actor2.time {
+            (state.actor1, state.actor2)
         } else {
-            (actor2, actor1)
+            (state.actor2, state.actor1)
         };
 
-        for (valve_idx, &valve) in closed_valves.iter().enumerate() {
+        let mut max_release_upper_bound = state.release;
+        for &valve in state.closed_valves.iter() {
+            let closest_actor = if distances[active.node][valve] <= distances[passive.node][valve] {
+                &active
+            } else {
+                &passive
+            };
+
+            let new_time = closest_actor.time + distances[closest_actor.node][valve] + 1;
+            if new_time < MAX_TIME {
+                max_release_upper_bound += nodes[valve].flowrate * (MAX_TIME - new_time);
+            }
+        }
+        if max_release_upper_bound <= max_release { continue; }
+
+        for (valve_idx, &valve) in state.closed_valves.iter().enumerate() {
             let new_time = active.time + distances[active.node][valve] + 1;
 
             if new_time < MAX_TIME {
-                let mut new_closed_valves = closed_valves.clone();
+                let mut new_closed_valves = state.closed_valves.clone();
                 new_closed_valves.swap_remove(valve_idx);
+                let new_release = state.release + (MAX_TIME - new_time) * nodes[valve].flowrate;
 
-                let new_active = Actor {
-                    time: new_time,
-                    release: active.release + (MAX_TIME - new_time) * nodes[valve].flowrate,
-                    node: valve,
-                };
+                let new_active = Actor { time: new_time, node: valve, };
 
-                max_release = max_release.max(new_active.release + passive.release);
-                front.push((new_closed_valves, new_active, passive.clone()));
+                max_release = max_release.max(new_release);
+                front.push( State {
+                    release: new_release,
+                    closed_valves: new_closed_valves,
+                    actor1: new_active,
+                    actor2: passive.clone(),
+                });
             }
         }
     }
