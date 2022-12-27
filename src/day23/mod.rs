@@ -1,5 +1,4 @@
 #[test]
-#[ignore]
 fn day23() {
     let input = include_str!("input.txt");
     // let input = include_str!("input_test.txt");

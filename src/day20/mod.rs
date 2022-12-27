@@ -1,9 +1,7 @@
 #[test]
-#[ignore]
 fn day20() {
     let input = include_str!("input.txt");
     // let input = include_str!("input_test.txt");
-
 
     // part 1
     let mut list = parse(input);
@@ -14,10 +12,10 @@ fn day20() {
     let (x,y,z) = get_coords(&list);
     println!("{:?}", x + y + z);
 
-    // part 2
+    // // part 2
     let mut list = parse(input);
-    for idx in 0..list.len() {
-        list[idx].value *= 811_589_153;
+    for elem in list.iter_mut() {
+        elem.value *= 811_589_153;
     }
 
     for _ in 0..10 {
@@ -73,21 +71,17 @@ fn move_elem(elem: usize, list: &mut Vec<ListElem>) {
     list[next].prev = list[elem].prev;
 
     // find element to insert behind
-    let insert_behind = {
-        let direction = list[elem].value.signum();
-        let to_skip = list[elem].value.abs() % (list.len() as i64 - 1);
-        let mut insert_behind = list[elem].prev;
+    let direction = list[elem].value.signum();
+    let to_skip = list[elem].value.abs() % (list.len() as i64 - 1);
+
+    let mut insert_behind = list[elem].prev;
+    for _ in 0..to_skip {
         if direction >= 0 {
-            for _ in 0..to_skip {
-                insert_behind = list[insert_behind].next;
-            }
+            insert_behind = list[insert_behind].next;
         } else {
-            for _ in 0..to_skip {
-                insert_behind = list[insert_behind].prev;
-            }
+            insert_behind = list[insert_behind].prev;
         }
-        insert_behind
-    };
+    }
 
     // insert at new position
     let new_next = list[insert_behind].next;
@@ -123,4 +117,3 @@ fn get_coords(list: &Vec<ListElem>) -> (i64,i64,i64) {
 
     return (x,y,z)
 }
-
