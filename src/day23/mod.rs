@@ -2,72 +2,65 @@
 fn day23() {
     let input = include_str!("input.txt");
     // let input = include_str!("input_test.txt");
+    // println!("{}", input);
 
     // part 1
-    let mut elves = parse_input(&input);
+    let (mut elves, mut map) = parse_input(&input);
+    // map.print_matrix(|b| if b {"#"} else {"."}.to_string());
     for round in 0..10 {
-        perform_round(&mut elves, round);
+        perform_round(&mut elves, &mut map, round);
     }
 
     let (min_x,max_x,min_y,max_y) = find_bounds(&elves);
     let area = (max_x - min_x + 1)*(max_y - min_y + 1);
     // println!("{:?}", (min_x,max_x,min_y,max_y) );
-    println!("{}", area - elves.len() as i32);
+    println!("{}", area - elves.len() as i64);
 
     // part 2
-    let mut elves = parse_input(&input);
+    let (mut elves, mut map) = parse_input(&input);
     let mut round = 0;
-    while perform_round(&mut elves, round) { round += 1; }
+    while perform_round(&mut elves, &mut map, round) { round += 1; }
     println!("{}", round+1);
 }
 
-use std::collections::HashMap;
-use std::collections::HashSet;
+const COORD_BOUND: u32 = 130;
 
-fn coord_to_u64(x:i32,y:i32) -> u64 {
-    let x = ((x as i64) & 0xFFFF_FFFF) as u64;
-    let y = ((y as i64) & 0xFFFF_FFFF) as u64;
-    (x << 32) | y
-}
+fn parse_input(s: &str) -> (Vec<(i64,i64)>, ShiftedIndexMatrix<bool>) {
+    let mut map = ShiftedIndexMatrix::centered(COORD_BOUND, false);
+    let mut elves = Vec::new();
 
-fn u64_to_coord(h: u64) -> (i32,i32) {
-    let x = (h >> 32) as i32;
-    let y = ((h << 32) >> 32) as i32;
-    (x,y)
-}
-
-fn parse_input(s: &str) -> HashSet<u64> {
-    let mut elves = HashSet::new();
     for (x,line) in s.lines().enumerate() {
         for (y,c) in line.chars().enumerate() {
             if c == '#' {
-                elves.insert(coord_to_u64(x as i32, y as i32));
+                let (row, col) = (x as i64, y as i64);
+                elves.push( (row,col) );
+                map.set(row,col,true);
             }
         }
     }
-    elves
+    (elves, map)
 }
 
 // x down (from north, to south), y right (from west to east)
-const N_NE_E_SE_S_SW_W_NW: [(i32,i32); 8] = [(-1,0),(-1,1),(0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1)];
+const N_NE_E_SE_S_SW_W_NW: [(i64,i64); 8] = [(-1,0),(-1,1),(0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1)];
 
-const N_NW_NE: [(i32,i32); 3] = [(-1,0),(-1,-1),(-1,1)];
-const S_SW_SE: [(i32,i32); 3] = [(1,0),(1,-1),(1,1)];
-const W_NW_SW: [(i32,i32); 3] = [(0,-1),(-1,-1),(1,-1)];
-const E_NE_SE: [(i32,i32); 3] = [(0,1),(-1,1),(1,1)];
+const N_NW_NE: [(i64,i64); 3] = [(-1,0),(-1,-1),(-1,1)];
+const S_SW_SE: [(i64,i64); 3] = [(1,0),(1,-1),(1,1)];
+const W_NW_SW: [(i64,i64); 3] = [(0,-1),(-1,-1),(1,-1)];
+const E_NE_SE: [(i64,i64); 3] = [(0,1),(-1,1),(1,1)];
 
-const DIRECTIONS: [&[(i32,i32)]; 4] = [&N_NW_NE, &S_SW_SE, &W_NW_SW, &E_NE_SE];
+const DIRECTIONS: [&[(i64,i64)]; 4] = [&N_NW_NE, &S_SW_SE, &W_NW_SW, &E_NE_SE];
 
-fn perform_round(elves: &mut HashSet<u64>, round_idx: usize) -> bool {
-    let mut elves_to_move: HashMap<u64,u64> = HashMap::new();
-    let mut proposed_moves: HashMap<u64,u32> = HashMap::new();
+fn perform_round(elves: &mut Vec<(i64,i64)>, map: &mut ShiftedIndexMatrix<bool>, round_idx: usize) -> bool {
+    let mut proposed_moves: ShiftedIndexMatrix<u32> = ShiftedIndexMatrix::centered(COORD_BOUND, 0);
+    let mut elves_to_move: Vec<(usize,(i64,i64))> = Vec::with_capacity(elves.len());
 
-    for elf in elves.iter() {
-        let (x,y) = u64_to_coord(*elf);
+    for (elf_idx,elf) in elves.iter().enumerate() {
+        let (x,y) = elf;
 
         let mut has_neigbour = false;
         for (dx,dy) in N_NE_E_SE_S_SW_W_NW.iter() {
-            has_neigbour = has_neigbour || elves.contains( &coord_to_u64(x+dx,y+dy) );
+            has_neigbour = has_neigbour || map.get(x+dx,y+dy);
         }
 
         if !has_neigbour { continue; }
@@ -77,38 +70,37 @@ fn perform_round(elves: &mut HashSet<u64>, round_idx: usize) -> bool {
 
             let mut has_neigbour = false;
             for (dx,dy) in to_check.iter() {
-                has_neigbour = has_neigbour || elves.contains( &coord_to_u64(x+dx,y+dy) );
+                has_neigbour = has_neigbour || map.get(x+dx,y+dy);
             }
 
             if has_neigbour { continue; }
 
-            let move_to = coord_to_u64(x + to_check[0].0, y + to_check[0].1);
-            elves_to_move.insert(*elf,move_to);
-            proposed_moves
-                .entry(move_to)
-                .and_modify(|count| { *count += 1 })
-                .or_insert(1);
+            let move_to = (x + to_check[0].0, y + to_check[0].1);
+            let tmp = proposed_moves.get(move_to.0, move_to.1);
+            proposed_moves.set(move_to.0, move_to.1, tmp + 1);
+            elves_to_move.push((elf_idx,move_to));
             break;
         }
     }
 
-    for (elf,move_to) in elves_to_move.iter() {
-        if *proposed_moves.get(move_to).unwrap() == 1 {
-            elves.remove(elf);
-            elves.insert(*move_to);
+    for &(elf_idx,move_to) in elves_to_move.iter() {
+        if proposed_moves.get(move_to.0, move_to.1) == 1 {
+            let old_pos = elves[elf_idx];
+            map.set(old_pos.0, old_pos.1, false);
+            map.set(move_to.0, move_to.1, true);
+            elves[elf_idx] = move_to;
         }
     }
 
     return elves_to_move.len() > 0;
 }
 
-fn find_bounds(elves: &HashSet<u64>) -> (i32,i32,i32,i32) {
-    let mut min_x = i32::MAX;
-    let mut min_y = i32::MAX;
-    let mut max_x = i32::MIN;
-    let mut max_y = i32::MIN;
-    for elf in elves.iter() {
-        let (x,y) = u64_to_coord(*elf);
+fn find_bounds(elves: &Vec<(i64,i64)>) -> (i64,i64,i64,i64) {
+    let mut min_x = i64::MAX;
+    let mut min_y = i64::MAX;
+    let mut max_x = i64::MIN;
+    let mut max_y = i64::MIN;
+    for &(x,y) in elves.iter() {
         min_x = min_x.min(x);
         min_y = min_y.min(y);
         max_x = max_x.max(x);
@@ -118,17 +110,59 @@ fn find_bounds(elves: &HashSet<u64>) -> (i32,i32,i32,i32) {
     (min_x,max_x,min_y,max_y)
 }
 
-#[allow(dead_code)]
-fn print_elves(elves: &HashSet<u64>) {
-    let (min_x,max_x,min_y,max_y) = find_bounds(elves);
-    for x in min_x..=max_x {
-        for y in min_y..=max_y {
-            if elves.contains( &coord_to_u64(x,y) ) {
-                print!("#");
-            } else {
-                print!(".");
-            }
+struct ShiftedIndexMatrix<T> {
+    data: Vec<T>,
+    row_low: i64,
+    row_up: i64,
+    col_low: i64,
+    col_up: i64,
+}
+
+impl<T> ShiftedIndexMatrix<T>
+where T: Copy
+{
+    fn centered(idx_bound: u32, fill: T) -> Self {
+        let data = vec![fill; ((2*idx_bound)*(2*idx_bound)) as usize];
+        let bound = idx_bound as i64;
+        ShiftedIndexMatrix {
+            data,
+            row_low: -bound,
+            row_up: bound,
+            col_low: -bound,
+            col_up: bound,
         }
-        println!();
+    }
+
+    fn data_index(&self, row: i64, col: i64) -> usize {
+        if row < self.row_low || row >= self.row_up || col < self.col_low || col >= self.col_up {
+            panic!("invalid index");
+        }
+
+        let row_offset = row - self.row_low;
+        let col_offset = col - self.col_low;
+        let n_col = self.col_up - self.col_low;
+
+        (col_offset + row_offset*n_col) as usize
+    }
+
+    fn get(&self, row: i64, col: i64) -> T {
+        self.data[self.data_index(row,col)]
+    }
+
+    fn set(&mut self, row: i64, col: i64, val: T) {
+        let idx = self.data_index(row,col);
+        self.data[idx] = val;
+    }
+
+    #[allow(dead_code)]
+    fn print_matrix<F>(&self, f: F) where F: Fn(T) -> String {
+        for row in self.row_low..self.row_up {
+            for col in self.col_low..self.col_up {
+                let idx = self.data_index(row,col);
+                print!("{}", f(self.data[idx]) );
+            }
+            println!();
+        }
     }
 }
+
